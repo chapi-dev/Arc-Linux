@@ -1,18 +1,18 @@
 {
   "properties": {
-    "displayName": "[Arc-Linux] Enable AutomaticByPlatform patching on Linux Arc machines",
-    "description": "Modify: fuerza patchMode=AutomaticByPlatform y assessmentMode=AutomaticByPlatform en maquinas Arc Linux para que sean gestionables por Azure Update Manager.",
+    "displayName": "[Arc-Linux] Audit Linux Arc machines without AutomaticByPlatform patching",
+    "description": "AuditIfNotExists: marca como NonCompliant las maquinas Arc Linux que no tienen patchSettings.patchMode=AutomaticByPlatform y patchSettings.assessmentMode=AutomaticByPlatform. El modo se debe aplicar via API directa (no Modify policy, ya que el alias no es modifiable en Arc). Ver scripts/onboarding/07-set-patchmode-on-arc-machines.ps1.",
     "policyType": "Custom",
     "mode": "Indexed",
     "metadata": {
       "category": "Azure Update Manager",
-      "version": "1.0.0"
+      "version": "2.0.0"
     },
     "parameters": {
       "effect": {
         "type": "String",
-        "allowedValues": [ "Modify", "Audit", "Disabled" ],
-        "defaultValue": "Modify"
+        "allowedValues": [ "AuditIfNotExists", "Disabled" ],
+        "defaultValue": "AuditIfNotExists"
       }
     },
     "policyRule": {
@@ -26,21 +26,19 @@
       "then": {
         "effect": "[parameters('effect')]",
         "details": {
-          "roleDefinitionIds": [
-            "/providers/Microsoft.Authorization/roleDefinitions/cd570a14-e51a-42ad-bac8-bafd67325302"
-          ],
-          "operations": [
-            {
-              "operation": "addOrReplace",
-              "field": "Microsoft.HybridCompute/machines/osProfile.linuxConfiguration.patchSettings.assessmentMode",
-              "value": "AutomaticByPlatform"
-            },
-            {
-              "operation": "addOrReplace",
-              "field": "Microsoft.HybridCompute/machines/osProfile.linuxConfiguration.patchSettings.patchMode",
-              "value": "AutomaticByPlatform"
-            }
-          ]
+          "type": "Microsoft.HybridCompute/machines",
+          "existenceCondition": {
+            "allOf": [
+              {
+                "field": "Microsoft.HybridCompute/machines/osProfile.linuxConfiguration.patchSettings.patchMode",
+                "equals": "AutomaticByPlatform"
+              },
+              {
+                "field": "Microsoft.HybridCompute/machines/osProfile.linuxConfiguration.patchSettings.assessmentMode",
+                "equals": "AutomaticByPlatform"
+              }
+            ]
+          }
         }
       }
     }

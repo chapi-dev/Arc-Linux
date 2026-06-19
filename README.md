@@ -38,16 +38,25 @@ Arc-Linux/
 │   ├── 01-architecture.md             ← componentes, agentes, red, RBAC
 │   ├── 02-groups-and-tags.md          ← grupos AZURE-ARC*, taxonomía de tags
 │   ├── 03-update-manager.md           ← Azure Update Manager + anillos
-│   ├── 04-defender-vs-trendmicro.md   ← comparativa + plan de onboarding
+│   ├── 04-defender-vs-trendmicro.md   ← comparativa + plan de onboarding + FIM
 │   ├── 05-inventory.md                ← Change Tracking + Inventory
 │   └── images/                        ← diagramas (a añadir)
+├── infra/                             ← Bicep (LAW + DCR + Maintenance Configs)
+│   ├── README.md
+│   ├── main.bicep
+│   └── modules/{law,dcr,maintenance}.bicep
 ├── scripts/
+│   ├── deploy/
+│   │   ├── deploy.ps1                 ← orquesta RG + Bicep + Policies + SP + dynamic scopes
+│   │   ├── rotate-sp.ps1              ← (re)crear SP cuando CAE bloquea
+│   │   └── cleanup.ps1                ← borra todo
 │   ├── lab/
 │   │   ├── 01-create-linux-vm.ps1     ← crea VM de lab en Azure
 │   │   └── 02-deazure-vm.sh           ← "des-azuriza" la VM (simula on-prem)
 │   ├── onboarding/
 │   │   ├── 03-create-sp-onboarding.ps1
-│   │   └── 04-azcmagent-connect.sh
+│   │   ├── 04-azcmagent-connect.sh
+│   │   └── 07-set-patchmode-on-arc-machines.ps1
 │   └── extensions/
 │       ├── 05-install-ama.ps1
 │       └── 06-install-mde-linux.ps1
@@ -66,8 +75,11 @@ Arc-Linux/
 
 1. Lee `docs/01-architecture.md` para el panorama general.
 2. Decide tags y anillos en `docs/02-groups-and-tags.md`.
-3. Levanta el lab siguiendo `scripts/lab/*` → `scripts/onboarding/*` → `scripts/extensions/*`.
-4. Aplica policies de `policy/initiatives/`.
+3. **Despliega la infra base** con `pwsh -File scripts/deploy/deploy.ps1` (crea
+   RG `rg-arc-linux-lab` con LAW + DCR + 3 MCs + policies + dynamic scopes).
+   Ver `infra/README.md`.
+4. Cuando quieras hacer el lab: `scripts/lab/*` → `scripts/onboarding/*` →
+   `scripts/extensions/*`.
 5. Valida inventario con las queries de `queries/`.
 6. Lleva las decisiones abiertas a la sesión: `session/agenda.md`.
 
