@@ -1,0 +1,83 @@
+{
+  "properties": {
+    "displayName": "[Arc-Linux] Deploy MDE.Linux extension when tag mdfc=enabled",
+    "description": "DeployIfNotExists: instala la extension MDE.Linux (Microsoft Defender for Endpoint) en cada maquina Arc Linux con tag mdfc=enabled. Defender for Servers Plan 1 o 2 debe estar activo en la suscripcion.",
+    "policyType": "Custom",
+    "mode": "Indexed",
+    "metadata": {
+      "category": "Security Center",
+      "version": "1.0.0"
+    },
+    "parameters": {
+      "effect": {
+        "type": "String",
+        "allowedValues": [ "DeployIfNotExists", "AuditIfNotExists", "Disabled" ],
+        "defaultValue": "DeployIfNotExists"
+      }
+    },
+    "policyRule": {
+      "if": {
+        "allOf": [
+          { "field": "type", "equals": "Microsoft.HybridCompute/machines" },
+          { "field": "Microsoft.HybridCompute/machines/osName", "equals": "linux" },
+          { "field": "tags['mdfc']", "equals": "enabled" }
+        ]
+      },
+      "then": {
+        "effect": "[parameters('effect')]",
+        "details": {
+          "type": "Microsoft.HybridCompute/machines/extensions",
+          "name": "MDE.Linux",
+          "roleDefinitionIds": [
+            "/providers/Microsoft.Authorization/roleDefinitions/cd570a14-e51a-42ad-bac8-bafd67325302"
+          ],
+          "existenceCondition": {
+            "allOf": [
+              { "field": "Microsoft.HybridCompute/machines/extensions/type", "equals": "MDE.Linux" },
+              { "field": "Microsoft.HybridCompute/machines/extensions/publisher", "equals": "Microsoft.Azure.AzureDefenderForServers" },
+              { "field": "Microsoft.HybridCompute/machines/extensions/provisioningState", "equals": "Succeeded" }
+            ]
+          },
+          "deployment": {
+            "properties": {
+              "mode": "incremental",
+              "parameters": {
+                "machineName": { "value": "[field('name')]" },
+                "machineId":   { "value": "[field('id')]" },
+                "location":    { "value": "[field('location')]" }
+              },
+              "template": {
+                "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                "contentVersion": "1.0.0.0",
+                "parameters": {
+                  "machineName": { "type": "string" },
+                  "machineId":   { "type": "string" },
+                  "location":    { "type": "string" }
+                },
+                "resources": [
+                  {
+                    "type": "Microsoft.HybridCompute/machines/extensions",
+                    "apiVersion": "2022-08-11-preview",
+                    "name": "[concat(parameters('machineName'), '/MDE.Linux')]",
+                    "location": "[parameters('location')]",
+                    "properties": {
+                      "publisher": "Microsoft.Azure.AzureDefenderForServers",
+                      "type": "MDE.Linux",
+                      "enableAutomaticUpgrade": true,
+                      "autoUpgradeMinorVersion": true,
+                      "settings": {
+                        "azureResourceId": "[parameters('machineId')]",
+                        "forceReOnboarding": false,
+                        "vNextEnabled": "true"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

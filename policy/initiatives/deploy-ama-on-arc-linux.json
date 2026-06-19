@@ -1,0 +1,76 @@
+{
+  "properties": {
+    "displayName": "[Arc-Linux] Deploy AzureMonitorLinuxAgent on Linux Arc machines",
+    "description": "DeployIfNotExists: instala la extension AzureMonitorLinuxAgent en cada maquina Arc Linux para habilitar telemetria y Change Tracking & Inventory.",
+    "policyType": "Custom",
+    "mode": "Indexed",
+    "metadata": {
+      "category": "Monitoring",
+      "version": "1.0.0"
+    },
+    "parameters": {
+      "effect": {
+        "type": "String",
+        "metadata": { "displayName": "Effect", "description": "Effect del policy" },
+        "allowedValues": [ "DeployIfNotExists", "AuditIfNotExists", "Disabled" ],
+        "defaultValue": "DeployIfNotExists"
+      }
+    },
+    "policyRule": {
+      "if": {
+        "allOf": [
+          { "field": "type", "equals": "Microsoft.HybridCompute/machines" },
+          { "field": "Microsoft.HybridCompute/machines/osName", "equals": "linux" }
+        ]
+      },
+      "then": {
+        "effect": "[parameters('effect')]",
+        "details": {
+          "type": "Microsoft.HybridCompute/machines/extensions",
+          "name": "AzureMonitorLinuxAgent",
+          "roleDefinitionIds": [
+            "/providers/Microsoft.Authorization/roleDefinitions/cd570a14-e51a-42ad-bac8-bafd67325302"
+          ],
+          "existenceCondition": {
+            "allOf": [
+              { "field": "Microsoft.HybridCompute/machines/extensions/type", "equals": "AzureMonitorLinuxAgent" },
+              { "field": "Microsoft.HybridCompute/machines/extensions/publisher", "equals": "Microsoft.Azure.Monitor" },
+              { "field": "Microsoft.HybridCompute/machines/extensions/provisioningState", "equals": "Succeeded" }
+            ]
+          },
+          "deployment": {
+            "properties": {
+              "mode": "incremental",
+              "parameters": {
+                "machineName": { "value": "[field('name')]" },
+                "location": { "value": "[field('location')]" }
+              },
+              "template": {
+                "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                "contentVersion": "1.0.0.0",
+                "parameters": {
+                  "machineName": { "type": "string" },
+                  "location": { "type": "string" }
+                },
+                "resources": [
+                  {
+                    "type": "Microsoft.HybridCompute/machines/extensions",
+                    "apiVersion": "2022-08-11-preview",
+                    "name": "[concat(parameters('machineName'), '/AzureMonitorLinuxAgent')]",
+                    "location": "[parameters('location')]",
+                    "properties": {
+                      "publisher": "Microsoft.Azure.Monitor",
+                      "type": "AzureMonitorLinuxAgent",
+                      "enableAutomaticUpgrade": true,
+                      "autoUpgradeMinorVersion": true
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

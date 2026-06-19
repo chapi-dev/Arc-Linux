@@ -1,0 +1,20 @@
+# --- Secrets / lab artifacts ---
+lab/*.env
+lab/*.secret
+lab/subscription.txt
+*.pem
+*.pfx
+*.key
+
+# --- IDE ---
+.vscode/
+.idea/
+*.swp
+
+# --- OS ---
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# --- Logs ---
+*.log

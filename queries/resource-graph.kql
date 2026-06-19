@@ -1,0 +1,116 @@
+// =============================================================================
+// resource-graph.kql
+// Queries de Azure Resource Graph para la vista "plataforma" de Arc-Linux.
+// Ejecutar en:  Portal -> Azure Resource Graph Explorer
+//          o:  az graph query -q "<query>"
+// =============================================================================
+
+// 1) Inventario completo de maquinas Arc Linux con tags clave
+Resources
+| where type =~ 'microsoft.hybridcompute/machines'
+| extend osType        = tostring(properties.osType),
+         osName        = tostring(properties.osName),
+         osVersion     = tostring(properties.osVersion),
+         osSku         = tostring(properties.osSku),
+         agentVersion  = tostring(properties.agentVersion),
+         status        = tostring(properties.status),
+         lastSeen      = todatetime(properties.lastStatusChange),
+         ring          = tostring(tags.ring),
+         env           = tostring(tags.env),
+         mdfc          = tostring(tags.mdfc),
+         aum           = tostring(tags.aum),
+         owner         = tostring(tags.owner)
+| where osType =~ 'linux'
+| project name, resourceGroup, location, osName, osVersion, osSku, agentVersion,
+          status, lastSeen, ring, env, mdfc, aum, owner, subscriptionId
+| order by lastSeen desc
+
+
+// 2) Hosts AZURE-ARC-UPDATE (candidatas a anillos de update)
+Resources
+| where type =~ 'microsoft.hybridcompute/machines'
+| where tostring(properties.osType) =~ 'linux'
+| where tostring(tags.aum) == 'enabled'
+| extend ring = tostring(tags.ring)
+| where ring in ('R0','R1','R2')
+| summarize hosts=count() by ring
+| order by ring asc
+
+
+// 3) Hosts AZURE-ARC-DEFENDER (con MDE objetivo)
+Resources
+| where type =~ 'microsoft.hybridcompute/machines'
+| where tostring(properties.osType) =~ 'linux'
+| where tostring(tags.mdfc) == 'enabled'
+| project name, resourceGroup, location, ring=tostring(tags.ring), env=tostring(tags.env)
+
+
+// 4) Hosts con extensiones esperadas instaladas
+Resources
+| where type =~ 'microsoft.hybridcompute/machines/extensions'
+| extend machine = tostring(split(id, '/')[8]),
+         extName = name,
+         extType = tostring(properties.type),
+         publisher = tostring(properties.publisher),
+         provisioningState = tostring(properties.provisioningState),
+         typeHandlerVersion = tostring(properties.typeHandlerVersion)
+| where extType in ('AzureMonitorLinuxAgent','ChangeTracking-Linux','MDE.Linux')
+| project machine, resourceGroup, extType, publisher, provisioningState, typeHandlerVersion
+| order by machine asc, extType asc
+
+
+// 5) Maquinas Linux SIN AMA (lagunas de monitoring)
+Resources
+| where type =~ 'microsoft.hybridcompute/machines'
+| where tostring(properties.osType) =~ 'linux'
+| project machineId = id, name, resourceGroup
+| join kind=leftouter (
+    Resources
+    | where type =~ 'microsoft.hybridcompute/machines/extensions'
+    | where tostring(properties.type) == 'AzureMonitorLinuxAgent'
+    | extend machineId = strcat_array(array_slice(split(id,'/'),0,8), '/')
+    | project machineId, hasAMA = true
+) on machineId
+| where isnull(hasAMA)
+| project name, resourceGroup
+
+
+// 6) Maquinas Linux SIN MDE pero con tag mdfc=enabled (drift)
+Resources
+| where type =~ 'microsoft.hybridcompute/machines'
+| where tostring(properties.osType) =~ 'linux'
+| where tostring(tags.mdfc) == 'enabled'
+| project machineId = id, name, resourceGroup
+| join kind=leftouter (
+    Resources
+    | where type =~ 'microsoft.hybridcompute/machines/extensions'
+    | where tostring(properties.type) == 'MDE.Linux'
+    | extend machineId = strcat_array(array_slice(split(id,'/'),0,8), '/')
+    | project machineId, hasMDE = true
+) on machineId
+| where isnull(hasMDE)
+| project name, resourceGroup
+
+
+// 7) Patch assessment: maquinas con criticos pendientes
+patchassessmentresources
+| where type =~ "microsoft.hybridcompute/machines/patchassessmentresults/softwarepatches"
+| extend osType = tostring(properties.osType),
+         classifications = tostring(properties.classifications),
+         installationState = tostring(properties.installationState),
+         machine = tostring(split(id, '/')[8])
+| where classifications has "Critical"
+| where installationState != "Installed"
+| summarize pendingCritical = count() by machine, osType
+| order by pendingCritical desc
+
+
+// 8) Maquinas Linux que NO se ven hace > 24h (probable agente caido)
+Resources
+| where type =~ 'microsoft.hybridcompute/machines'
+| where tostring(properties.osType) =~ 'linux'
+| extend lastSeen = todatetime(properties.lastStatusChange),
+         status = tostring(properties.status)
+| where lastSeen < ago(24h) or status != 'Connected'
+| project name, resourceGroup, status, lastSeen, ring=tostring(tags.ring)
+| order by lastSeen asc

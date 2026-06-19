@@ -1,0 +1,101 @@
+// =============================================================================
+// inventory.kql
+// Queries Log Analytics (KQL) sobre Change Tracking & Inventory (AMA-based)
+// y sobre eventos FIM de Defender for Endpoint (Linux).
+//
+// Workspace: law-arc-linux-<region>
+// =============================================================================
+
+// 1) Software instalado (TOP por hosts)
+ConfigurationData
+| where ConfigDataType == "Software"
+| summarize hosts = dcount(Computer) by SoftwareName, CurrentVersion
+| order by hosts desc
+
+
+// 2) Versiones de un paquete concreto (ej. openssh)
+ConfigurationData
+| where ConfigDataType == "Software" and SoftwareName has "openssh"
+| summarize arg_max(TimeGenerated, *) by Computer, SoftwareName
+| project Computer, SoftwareName, CurrentVersion
+| order by Computer asc
+
+
+// 3) Servicios systemd activos
+ConfigurationData
+| where ConfigDataType == "Daemons"
+| summarize hosts = dcount(Computer) by SvcName, SvcState
+| order by hosts desc
+
+
+// 4) Cambios en archivos criticos ultimas 24h
+ConfigurationChange
+| where TimeGenerated > ago(24h)
+| where ConfigChangeType == "Files"
+| where FileSystemPath has_any (
+    "/etc/passwd","/etc/shadow","/etc/sudoers","/etc/sudoers.d",
+    "/etc/ssh/sshd_config",".ssh/authorized_keys",
+    "/etc/ld.so.preload","/etc/cron","/etc/systemd/system")
+| project TimeGenerated, Computer, FileSystemPath, ChangeCategory, PreviousValue, NewValue
+| order by TimeGenerated desc
+
+
+// 5) Cambios en servicios systemd ultimas 24h
+ConfigurationChange
+| where TimeGenerated > ago(24h)
+| where ConfigChangeType == "Daemons"
+| project TimeGenerated, Computer, SvcName, SvcState, SvcChangeType, SvcPreviousState=PreviousValue, SvcNewState=NewValue
+| order by TimeGenerated desc
+
+
+// 6) Cambios en software (instalaciones / upgrades / removes)
+ConfigurationChange
+| where TimeGenerated > ago(7d)
+| where ConfigChangeType == "Software"
+| project TimeGenerated, Computer, SoftwareName, ChangeCategory, PreviousValue, NewValue
+| order by TimeGenerated desc
+
+
+// 7) Snapshot completo de inventario para un host
+let target = "lab-rhel9-01";
+ConfigurationData
+| where Computer == target
+| summarize arg_max(TimeGenerated, *) by ConfigDataType, SoftwareName, SvcName, FileSystemPath
+| project ConfigDataType, SoftwareName, CurrentVersion, SvcName, SvcState, FileSystemPath
+| order by ConfigDataType asc
+
+
+// =============================================================================
+// FIM (Microsoft Defender for Endpoint, Linux) — tabla DeviceFileEvents
+// Disponible si tu workspace tiene el conector M365 Defender / advanced hunting
+// =============================================================================
+
+// 8) FIM: cambios en archivos sensibles ultimas 24h
+DeviceFileEvents
+| where Timestamp > ago(24h)
+| where DeviceType == "Server"
+| where FolderPath has_any (
+    "/etc/ssh","/etc/sudoers","/etc/passwd","/etc/shadow",
+    "/etc/ld.so.preload","/etc/systemd/system","/etc/cron")
+| project Timestamp, DeviceName, ActionType, FolderPath, FileName,
+          SHA256, InitiatingProcessFileName, InitiatingProcessCommandLine,
+          InitiatingProcessAccountName
+| order by Timestamp desc
+
+
+// 9) FIM: modificacion de authorized_keys fuera de dnf/apt/yum/puppet/ansible
+DeviceFileEvents
+| where Timestamp > ago(7d)
+| where FileName =~ "authorized_keys"
+| where InitiatingProcessFileName !in~ ("dnf","yum","apt","apt-get","puppet","ansible-playbook","cfn-init")
+| project Timestamp, DeviceName, FolderPath, ActionType,
+          InitiatingProcessFileName, InitiatingProcessCommandLine, InitiatingProcessAccountName
+| order by Timestamp desc
+
+
+// 10) FIM: top hosts por volumen de cambios (deteccion de ruido)
+DeviceFileEvents
+| where Timestamp > ago(7d)
+| where DeviceType == "Server"
+| summarize events = count() by DeviceName
+| order by events desc
