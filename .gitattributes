@@ -1,0 +1,13 @@
+# Default: text auto-normalize
+* text=auto eol=lf
+
+# Shell scripts MUST always be LF (Linux executes them)
+*.sh text eol=lf
+
+# PowerShell stays CRLF on Windows
+*.ps1 text eol=crlf
+
+# Binary
+*.png binary
+*.jpg binary
+*.pdf binary

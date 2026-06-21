@@ -69,7 +69,42 @@ Equivalente declarativo en Bicep: ver `policy/initiatives/` (a generar).
 
 ## 6. Habilitar periodic assessment en cada máquina
 
-Para **Arc-enabled servers** se hace via Azure Policy o por máquina:
+Para **Arc-enabled servers** hay dos vías:
+
+> ⚠️ **Gotcha de Arc en el bulk panel de AUM**: en `Azure Update Manager →
+> Machines → Update settings`, la columna **Patch orchestration** sale en
+> gris (`Not available`) para Arc-enabled servers. Es una limitación de la
+> UI bulk — solo aplica a Azure VMs nativas. En Arc hay que configurar
+> `patchMode` **individualmente** dentro de cada VM o por API. El bulk panel
+> sí sirve para activar **Periodic assessment** en lote.
+
+### 6.1 Vía Portal — Periodic assessment en lote + patchMode por VM
+
+**Parte A — Periodic assessment (en lote, vale para muchas VMs):**
+
+1. Portal → busca arriba **"Azure Update Manager"** → entra.
+2. En el menú izquierdo: **Manage → Machines**.
+3. Filtra `Resource type = Arc-enabled servers` y marca la(s) máquina(s).
+4. Botón **Update settings** (arriba).
+5. En el panel **Change update settings**:
+   - **Periodic assessment** → **Enable**. (Patch orchestration y Hotpatch
+     saldrán `Not available` para Arc; ignóralos aquí.)
+6. **Save**. Esto pone `assessmentMode = AutomaticByPlatform`.
+
+**Parte B — Patch orchestration (uno por uno, por VM):**
+
+1. Misma pantalla → click sobre el nombre de la VM Arc.
+2. Dentro del recurso Arc → panel izquierdo **Updates → Update settings**.
+3. Ahí sí aparece **Patch orchestration** activo → elige
+   `Customer Managed Schedules`. **Save**.
+
+Resultado: en la lista de máquinas, refrescando, la fila Arc aparece con
+`Patch orchestration: Customer Managed Schedules` y
+`Periodic assessment: Yes`.
+
+### 6.2 Vía CLI / script (recomendado para masa)
+
+**Opción A — `az connectedmachine update` (cuando la CLI está sana):**
 
 ```bash
 az connectedmachine update \
@@ -78,6 +113,51 @@ az connectedmachine update \
   --set properties.osProfile.linuxConfiguration.patchSettings.assessmentMode=AutomaticByPlatform \
         properties.osProfile.linuxConfiguration.patchSettings.patchMode=AutomaticByPlatform
 ```
+
+O el script idempotente multi-host:
+```powershell
+pwsh -File scripts\onboarding\07-set-patchmode-on-arc-machines.ps1 -ResourceGroup rg-arc-linux-lab
+```
+
+**Opción B — `az rest` directo (workaround cuando la extensión `application-insights` de Azure CLI está rota):**
+
+Si ves `PermissionError: [WinError 5] Access is denied: '...\\application-insights\\application_insights-*.dist-info'`, usa la API directa:
+
+```powershell
+$sub = "<subscriptionId>"
+$rg  = "rg-arc-linux-lab"
+$machine = "<hostname>"
+$uri = "https://management.azure.com/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.HybridCompute/machines/$machine`?api-version=2024-07-10"
+
+$body = @{
+  properties = @{
+    osProfile = @{
+      linuxConfiguration = @{
+        patchSettings = @{
+          patchMode = "AutomaticByPlatform"
+          assessmentMode = "AutomaticByPlatform"
+        }
+      }
+    }
+  }
+} | ConvertTo-Json -Depth 10 -Compress
+
+$tmp = New-TemporaryFile
+$body | Out-File -FilePath $tmp.FullName -Encoding utf8 -NoNewline
+az rest --method PATCH --uri $uri --body "@$($tmp.FullName)" --headers "Content-Type=application/json"
+Remove-Item $tmp.FullName -Force
+```
+
+Para arreglar la extensión rota (causa raíz):
+```powershell
+az extension remove --name application-insights
+az extension add    --name application-insights
+```
+
+> Lo importante: la pertenencia a `AZURE-ARC-UPDATE` la marca el **tag**, no
+> el haber pulsado "Save" en el portal. El portal solo prepara la máquina
+> para que AUM la gestione; el dynamic scope (que filtra por tag) decide
+> qué MC le aplica.
 
 `patchMode=AutomaticByPlatform` es obligatorio para que AUM gestione el
 patching en lugar del agente nativo de la distro.

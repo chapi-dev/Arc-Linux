@@ -192,12 +192,60 @@ Datos públicos de MS en RHEL/Ubuntu modernos:
 | 3    | 1 sem    | Decisión Go/No-Go (KPIs en `session/agenda.md`)                                                 |
 | 4    | 4-6 sem  | Despliegue progresivo a R2 prod + **desinstalación de Trend** ring por ring                     |
 
+### 7.1 — Cambio crítico: pasar MDE de passive a active mode
+
+> ⚠️ Validado en lab 2026-06-22. Microsoft despliega MDE.Linux en **passive
+> mode** por defecto. En passive mode **MDE solo informa, no bloquea**.
+
+Comprueba el estado:
+```bash
+sudo mdatp health --field passive_mode_enabled       # true == passive
+sudo mdatp health --field real_time_protection_enabled
+sudo mdatp health --field engine_load_status
+```
+
+Activar active mode (**sólo después de desinstalar Trend Micro**):
+```bash
+sudo mdatp config passive-mode --value disabled
+sudo mdatp config real-time-protection --value enabled
+sudo mdatp config behavior-monitoring --value enabled
+sudo mdatp definitions update
+sudo mdatp health   # debe quedar healthy=true, RTP=true, engine "Engine load succeeded"
+```
+
+Validar con test EICAR (oficial, inofensivo):
+```bash
+curl -o /tmp/eicar.com https://secure.eicar.org/eicar.com.txt
+sleep 5
+ls /tmp/eicar.com 2>&1     # "No such file or directory"
+sudo mdatp threat list     # debe mostrar Virus:DOS/EICAR_Test_File, status=quarantined
+```
+
+### 7.2 — Network Protection: dejar disabled en producción
+
+> ⚠️ MDE.Linux Network Protection sólo funciona en `release_ring=Insider-Fast`.
+> En `Production` ring (el recomendado para prod) sale:
+> ```
+> health_issues: ["Network Protection cannot start due to unsupported release ring"]
+> network_protection_status: "enablement_failed_due_to_edr_capabilities"
+> ```
+
+Dejarlo desactivado:
+```bash
+sudo mdatp config network-protection enforcement-level --value disabled
+```
+
+Más detalles en `docs/07-lab-lessons-learned.md` punto 7.
+
 ## 8. Checklist de adopción
 
 - [ ] Plan 2 habilitado en la subscription objetivo.
 - [ ] Tag `mdfc=enabled` en máquinas objetivo.
 - [ ] Azure Policy `DeployIfNotExists` para extensión MDE.Linux.
 - [ ] **FIM (versión MDE)** activado y workspace asociado.
+- [ ] **MDE pasado a active mode** (passive_mode_enabled=false, RTP=true, behavior_monitoring=enabled) — **sólo después de desinstalar el AV anterior**.
+- [ ] Network Protection en `disabled` (no soportado en Production ring).
+- [ ] EICAR test pasado (validación AV operativo).
 - [ ] Lista de paths corporativos custom revisada y añadida.
 - [ ] Exclusiones de AV para DB / NFS revisadas.
 - [ ] Conector Sentinel `Defender for Cloud` activo.
