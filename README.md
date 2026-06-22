@@ -5,9 +5,17 @@
 > tenemos en Wintel sobre **Azure Arc-enabled Servers**: inventario, updates,
 > antivirus y File Integrity Monitoring gestionados desde Azure.
 >
-> 🏆 **Lab end-to-end ejecutado el 2026-06-21/22 sobre RHEL 9.8.**
-> Ver [`session/lab-execution-report.md`](session/lab-execution-report.md)
-> para el informe ejecutivo con todas las capturas.
+> 🏆 **Lab end-to-end ejecutado sobre RHEL 9.8 + Ubuntu 22.04** (Microsoft
+> Customer Access Program sandbox). Ver
+> [`session/lab-execution-report.md`](session/lab-execution-report.md) para
+> el informe ejecutivo con todas las capturas.
+>
+> ℹ️ **Disclaimer**: este repo documenta un lab personal. Identificadores
+> concretos (subscription ID, tenant ID, IPs públicas, nombres internos) han
+> sido ofuscados a placeholders como `<SUBSCRIPTION_ID>`, `<TENANT_ID>`,
+> `<RHEL_IP>`, etc. Sustituye por los tuyos antes de ejecutar nada. Las
+> capturas se conservan tal cual como evidencia visual — los IDs que
+> aparecen ahí son identificadores Azure no sensibles (no son credenciales).
 
 ---
 

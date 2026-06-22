@@ -11,7 +11,7 @@
 |----------------------------------|--------------------------------------------------------|------------------------------------------|
 | Necesita humano por VM           | Sí (un código en `microsoft.com/devicelogin`)         | No (no-interactivo)                      |
 | Apto para automatización         | ❌                                                     | ✅ (ansible, packer, golden images)       |
-| Identidad usada en Activity Log  | Tu usuario (`antonioch@…`)                            | El SP (`sp-arc-linux-onboarding`)        |
+| Identidad usada en Activity Log  | Tu usuario (`<OPERATOR>@…`)                            | El SP (`sp-arc-linux-onboarding`)        |
 | Privilegio                       | El de tu usuario (Owner / GA en nuestro caso)         | **Mínimo**: `Azure Connected Machine Onboarding` |
 | Rotación                         | N/A (depende de tu contraseña)                        | Rotable (`az ad sp credential reset`)    |
 | Blast radius si fuga             | **Alto** (privilegios del usuario)                    | **Bajo** (solo onboarding en RG concreto)|
@@ -35,7 +35,7 @@
 ### 3.1 Opción A — Script ya en el repo
 
 ```powershell
-cd C:\Users\antonioch\Documents\Projects\Arc-Linux
+cd <REPO_ROOT>
 az logout ; az login          # browser interactivo
 pwsh -File scripts\deploy\rotate-sp.ps1 -ResourceGroup rg-arc-linux-lab
 ```
@@ -51,7 +51,7 @@ El script:
 
 ```bash
 # Variables
-SUB_ID="57b74ad7-4e8a-4221-b993-59b7df78c096"
+SUB_ID="<SUBSCRIPTION_ID>"
 RG="rg-arc-linux-lab"
 SP_NAME="sp-arc-linux-onboarding"
 

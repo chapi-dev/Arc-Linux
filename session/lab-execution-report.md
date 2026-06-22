@@ -1,8 +1,8 @@
 # Resultados de la sesión de lab — Arc-Linux end-to-end
 
 > Fecha: **2026-06-21 → 2026-06-22 (01:30 UTC+2)**
-> Operador: @chapi-dev
-> Sub: `ME-MngEnvMCAP184496-antonioch-1`
+> Operador: <OPERATOR>
+> Sub: `<SUBSCRIPTION_NAME>`
 > RG: `rg-arc-linux-lab` (westeurope)
 
 ## TL;DR — Petición original del correo del cliente
@@ -29,8 +29,8 @@
 ### VMs del lab
 | VM | OS | IP pública | Arc-connected | MDE | FIM | AUM |
 |---|---|---|---|---|---|---|
-| `lab-rhel9-01` | RHEL 9.8 | 20.224.141.21 | ✅ | ✅ Active | ✅ Pendiente eventos | ✅ R0 |
-| `lab-ubuntu22-01` | Ubuntu 22.04.5 | 20.71.170.239 | ⏳ Pendiente | ⏳ | ⏳ | ⏳ |
+| `lab-rhel9-01` | RHEL 9.8 | <RHEL_IP> | ✅ | ✅ Active | ✅ Pendiente eventos | ✅ R0 |
+| `lab-ubuntu22-01` | Ubuntu 22.04.5 | <UBUNTU_IP> | ⏳ Pendiente | ⏳ | ⏳ | ⏳ |
 
 ### Tags aplicados a `lab-rhel9-01` (Arc resource)
 ```

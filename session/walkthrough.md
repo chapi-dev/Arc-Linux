@@ -1,10 +1,10 @@
 # Walkthrough lab Arc-Linux — Guion paso a paso para capturas
 
 > Fechas de ejecución: 2026-06-21 → 2026-06-22
-> Subscription: `ME-MngEnvMCAP184496-antonioch-1` (`57b74ad7-4e8a-4221-b993-59b7df78c096`)
+> Subscription: `<SUBSCRIPTION_NAME>` (`<SUBSCRIPTION_ID>`)
 > RG: `rg-arc-linux-lab` (westeurope)
-> Tenant: `0f192c00-a84d-468a-b16a-4d320066de34`
-> Operator: @chapi-dev
+> Tenant: `<TENANT_ID>`
+> Operator: <OPERATOR>
 >
 > **Convención**: cada paso es una captura sugerida. 📸 = lo que enseñar.
 >
@@ -25,8 +25,8 @@
 | MC anillo R2     | `mc-arc-linux-lab-r2-biweekly` (Sat 22:00 cada 2 sem)                           |
 | Dynamic scopes   | `ds-arc-linux-r0` / `r1` / `r2` (filter `ring=Rx + aum=enabled`)                |
 | Policy assigns   | `assign-ama-arc-linux`, `assign-mde-arc-linux`, `assign-patchmode-arc-linux`    |
-| VM RHEL 9.8      | `lab-rhel9-01` — pública `20.224.141.21` — usuario `azureuser`                  |
-| VM Ubuntu 22.04  | `lab-ubuntu22-01` — pública `20.71.170.239` — usuario `azureuser`               |
+| VM RHEL 9.8      | `lab-rhel9-01` — pública `<RHEL_IP>` — usuario `azureuser`                  |
+| VM Ubuntu 22.04  | `lab-ubuntu22-01` — pública `<UBUNTU_IP>` — usuario `azureuser`               |
 
 ---
 
@@ -69,10 +69,10 @@ Filtra por subscription y verás los 3 MCs.
 Abre PowerShell o tu terminal local:
 
 ```powershell
-ssh azureuser@20.224.141.21    # RHEL
+ssh azureuser@<RHEL_IP>    # RHEL
 # Esperado: PRETTY_NAME="Red Hat Enterprise Linux 9.8 (Plow)"
 
-ssh azureuser@20.71.170.239    # Ubuntu
+ssh azureuser@<UBUNTU_IP>    # Ubuntu
 # Esperado: PRETTY_NAME="Ubuntu 22.04.5 LTS"
 ```
 
@@ -98,7 +98,7 @@ ssh azureuser@20.71.170.239    # Ubuntu
 En **PowerShell local** (en la carpeta del repo):
 
 ```powershell
-cd C:\Users\antonioch\Documents\Projects\Arc-Linux
+cd <REPO_ROOT>
 az logout
 az login                                                            # abre browser → completa login
 pwsh -File scripts\deploy\rotate-sp.ps1 -ResourceGroup rg-arc-linux-lab
@@ -120,7 +120,7 @@ credenciales en `lab\lab.env`.
 
 Conéctate y ejecuta los 3 comandos:
 ```bash
-ssh azureuser@20.224.141.21
+ssh azureuser@<RHEL_IP>
 # Una vez dentro:
 hostnamectl
 sudo systemctl status waagent --no-pager | head -5
@@ -137,9 +137,9 @@ Lo esperado **ahora** (antes del de-azure):
 ### Paso D1 · Copia el script y ejecútalo
 
 ```powershell
-cd C:\Users\antonioch\Documents\Projects\Arc-Linux
-scp scripts\lab\02-deazure-vm.sh azureuser@20.224.141.21:~
-ssh azureuser@20.224.141.21 'sudo bash ~/02-deazure-vm.sh'
+cd <REPO_ROOT>
+scp scripts\lab\02-deazure-vm.sh azureuser@<RHEL_IP>:~
+ssh azureuser@<RHEL_IP> 'sudo bash ~/02-deazure-vm.sh'
 ```
 
 Lo que hace:
@@ -153,7 +153,7 @@ Lo que hace:
 
 ### Paso D2 · (Opcional) Verifica que ya no responde IMDS
 ```powershell
-ssh azureuser@20.224.141.21 'curl -s -m 3 -H Metadata:true http://169.254.169.254/metadata/instance?api-version=2021-02-01 ; echo "exit=$?"'
+ssh azureuser@<RHEL_IP> 'curl -s -m 3 -H Metadata:true http://169.254.169.254/metadata/instance?api-version=2021-02-01 ; echo "exit=$?"'
 ```
 
 📸 Resultado con timeout / exit no-cero, confirmando IMDS bloqueado.
@@ -172,15 +172,15 @@ ssh azureuser@20.224.141.21 'curl -s -m 3 -H Metadata:true http://169.254.169.25
 
 ```powershell
 # Sube tu archivo lab.env (creado en bloque C) a la VM
-scp lab\lab.env azureuser@20.224.141.21:~/lab.env
+scp lab\lab.env azureuser@<RHEL_IP>:~/lab.env
 ```
 
 ### Paso E2 · Conecta el host a Arc
 
 Copia el script de onboarding y ejecútalo:
 ```powershell
-scp scripts\onboarding\04-azcmagent-connect.sh azureuser@20.224.141.21:~
-ssh azureuser@20.224.141.21
+scp scripts\onboarding\04-azcmagent-connect.sh azureuser@<RHEL_IP>:~
+ssh azureuser@<RHEL_IP>
 # Ya dentro de la VM:
 source ~/lab.env
 sudo -E bash ~/04-azcmagent-connect.sh
@@ -245,7 +245,7 @@ az connectedmachine extension list -g rg-arc-linux-lab --machine-name lab-rhel9-
 
 1. Portal → busca arriba **"Azure Update Manager"**.
 2. Menú izquierdo: **Manage → Machines**.
-3. Filtra `Subscription = ME-MngEnvMCAP184496-antonioch-1`, `Resource group = rg-arc-linux-lab`.
+3. Filtra `Subscription = <SUBSCRIPTION_NAME>`, `Resource group = rg-arc-linux-lab`.
 4. Marca la checkbox de `lab-rhel9-01`.
 5. Botón **Update settings** (arriba).
 6. En el panel:
@@ -294,7 +294,7 @@ los `/opt/<app>/conf` corporativos).
 Tras 5-10 min:
 ```powershell
 az connectedmachine extension list -g rg-arc-linux-lab --machine-name lab-rhel9-01 -o table
-ssh azureuser@20.224.141.21 'sudo mdatp health --field real_time_protection_enabled'
+ssh azureuser@<RHEL_IP> 'sudo mdatp health --field real_time_protection_enabled'
 ```
 
 📸 Salida con `MDE.Linux` provisioning Succeeded y `mdatp health` = `true`.
@@ -309,11 +309,11 @@ tag de anillo (`ARC_TAG_RING=R1`) para ver que el dynamic scope correcto la
 recoge.
 
 ```powershell
-scp scripts\lab\02-deazure-vm.sh azureuser@20.71.170.239:~
-ssh azureuser@20.71.170.239 'sudo bash ~/02-deazure-vm.sh'
+scp scripts\lab\02-deazure-vm.sh azureuser@<UBUNTU_IP>:~
+ssh azureuser@<UBUNTU_IP> 'sudo bash ~/02-deazure-vm.sh'
 
-scp lab\lab.env scripts\onboarding\04-azcmagent-connect.sh azureuser@20.71.170.239:~
-ssh azureuser@20.71.170.239
+scp lab\lab.env scripts\onboarding\04-azcmagent-connect.sh azureuser@<UBUNTU_IP>:~
+ssh azureuser@<UBUNTU_IP>
 source ~/lab.env
 export ARC_TAG_RING=R1                       # opcional: pone Ubuntu en anillo R1
 sudo -E bash ~/04-azcmagent-connect.sh

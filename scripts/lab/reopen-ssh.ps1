@@ -34,5 +34,5 @@ foreach ($nsg in $NsgNames) {
 }
 
 Write-Host "`nIntenta de nuevo:" -ForegroundColor Yellow
-Write-Host "  ssh -i `$HOME\.ssh\id_rsa azureuser@20.224.141.21"
-Write-Host "  ssh -i `$HOME\.ssh\id_rsa azureuser@20.71.170.239"
+Write-Host "  ssh -i `$HOME\.ssh\id_rsa azureuser@<RHEL_IP>"
+Write-Host "  ssh -i `$HOME\.ssh\id_rsa azureuser@<UBUNTU_IP>"
